@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>THAWNETWORK.github.io - detention centers and activity</title>
+<title>USA Forces Map</title>
 <link rel="icon" type="image/png" href="system/favicons/current.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -18,11 +18,11 @@
     --cyan:  #22d3ee;
     --red:   #ef4444;
     --yel:   #facc15;
-    --org:   #f97316;
+    --grn:   #22c55e;
+    --blu:   #3b82f6;
     --pur:   #a78bfa;
     --txt:   #e2e8f0;
     --mut:   #64748b;
-    --grn:   #22c55e;
   }
 
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -40,22 +40,17 @@
   #radar-overlay.fade { opacity:0; pointer-events:none; }
 
   .radar-wrap { position:relative; width:180px; height:180px; }
-
-  /* rings */
   .radar-wrap::before, .radar-wrap::after {
     content:''; position:absolute; border-radius:50%; border:1px solid rgba(34,211,238,.18);
     top:50%; left:50%; transform:translate(-50%,-50%);
   }
   .radar-wrap::before { width:100%; height:100%; }
   .radar-wrap::after  { width:60%;  height:60%; }
-
   .radar-ring2 {
     position:absolute; width:30%; height:30%;
     border-radius:50%; border:1px solid rgba(34,211,238,.18);
     top:50%; left:50%; transform:translate(-50%,-50%);
   }
-
-  /* crosshairs */
   .radar-cross {
     position:absolute; inset:0;
     background:
@@ -63,11 +58,8 @@
       linear-gradient(90deg, rgba(34,211,238,.12) 1px, transparent 1px);
     background-size:100% 50%, 50% 100%;
   }
-
-  /* sweep */
   .radar-sweep {
-    position:absolute; inset:0;
-    border-radius:50%;
+    position:absolute; inset:0; border-radius:50%;
     background: conic-gradient(
       from 0deg,
       rgba(34,211,238,0)       0deg,
@@ -79,22 +71,17 @@
     animation: sweep 2s linear infinite;
   }
   @keyframes sweep { to { transform:rotate(360deg); } }
-
-  /* center dot */
   .radar-center {
     position:absolute; width:6px; height:6px; border-radius:50%;
     background:var(--cyan); top:50%; left:50%; transform:translate(-50%,-50%);
     box-shadow:0 0 8px var(--cyan);
   }
-
-  /* blips that appear on the radar */
   .radar-blip {
     position:absolute; width:4px; height:4px; border-radius:50%;
     background:var(--cyan); opacity:0;
     animation:blip 2s ease-in-out infinite;
   }
   @keyframes blip { 0%,100%{opacity:0;transform:scale(.5)} 40%,60%{opacity:.9;transform:scale(1)} }
-
   .radar-label {
     margin-top:28px;
     font-family:'Space Mono',monospace; font-size:11px; letter-spacing:.18em;
@@ -106,11 +93,12 @@
   /* ── SEARCH BAR ────────────────────────────────────────────────── */
   #searchbar {
     position:fixed; top:18px; left:50%; transform:translateX(-50%);
-    z-index:1000; width:340px; max-width:calc(100vw - 180px);
+    z-index:1000; width:380px; max-width:calc(100vw - 140px);
     display:flex; align-items:center; gap:0;
-    background:var(--panel); border:1px solid var(--bdr); border-radius:10px;
-    backdrop-filter:blur(12px); overflow:hidden;
+    background:var(--panel); border:1px solid var(--bdr); border-radius:10px 10px 0 0;
+    backdrop-filter:blur(12px); overflow:hidden; flex-direction:column;
   }
+  #searchbar-top { display:flex; align-items:center; width:100%; }
   #searchbar svg { flex-shrink:0; margin-left:12px; opacity:.4; }
   #search-input {
     flex:1; background:transparent; border:none; outline:none;
@@ -124,12 +112,46 @@
   }
   #search-clear:hover { color:var(--txt); }
 
+  /* search filter row */
+  #search-filters {
+    display:flex; width:100%; border-top:1px solid var(--bdr);
+    background:rgba(0,0,0,.2);
+  }
+  .sf-btn {
+    flex:1; background:none; border:none; border-right:1px solid var(--bdr);
+    color:var(--mut); font-family:'Space Mono',monospace; font-size:9px;
+    letter-spacing:.06em; text-transform:uppercase; padding:5px 4px; cursor:pointer;
+    transition:all .15s;
+  }
+  .sf-btn:last-child { border-right:none; }
+  .sf-btn.on { color:#000; }
+  .sf-btn[data-f="all"].on   { background:var(--cyan); }
+  .sf-btn[data-f="ice"].on   { background:var(--red); }
+  .sf-btn[data-f="police"].on { background:var(--blu); }
+  .sf-btn[data-f="military"].on { background:var(--grn); }
+
+  /* state filter */
+  #state-filter-wrap {
+    display:flex; width:100%; border-top:1px solid var(--bdr);
+    background:rgba(0,0,0,.15); align-items:center; padding:0 10px; gap:6px;
+  }
+  #state-filter-wrap label {
+    font-family:'Space Mono',monospace; font-size:9px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--mut); white-space:nowrap;
+  }
+  #state-select {
+    flex:1; background:transparent; border:none; outline:none; color:var(--txt);
+    font-family:'Space Grotesk',sans-serif; font-size:12px; padding:5px 0;
+    cursor:pointer;
+  }
+  #state-select option { background:#1a1a1a; color:var(--txt); }
+
   /* search results dropdown */
   #search-results {
-    position:fixed; top:54px; left:50%; transform:translateX(-50%);
-    z-index:1001; width:340px; max-width:calc(100vw - 180px);
-    background:var(--panel); border:1px solid var(--bdr); border-radius:8px;
-    backdrop-filter:blur(12px); display:none; overflow:hidden;
+    position:fixed; top:100px; left:50%; transform:translateX(-50%);
+    z-index:1001; width:380px; max-width:calc(100vw - 140px);
+    background:var(--panel); border:1px solid var(--bdr); border-radius:0 0 8px 8px;
+    border-top:none; backdrop-filter:blur(12px); display:none; overflow:hidden;
     max-height:260px; overflow-y:auto;
   }
   .sr-item {
@@ -140,9 +162,9 @@
   .sr-item:hover { background:rgba(34,211,238,.07); }
   .sr-item b { color:var(--txt); font-weight:600; }
   .sr-item span { color:var(--mut); font-size:11px; margin-left:6px; }
-  .sr-type {
+  .sr-id {
     font-family:'Space Mono',monospace; font-size:9px; text-transform:uppercase;
-    letter-spacing:.08em; margin-right:6px;
+    letter-spacing:.08em; margin-right:6px; opacity:.6;
   }
 
   /* ── LOCATE BUTTON ─────────────────────────────────────────────── */
@@ -156,20 +178,22 @@
   #locate-btn:hover { border-color:var(--cyan); color:var(--cyan); }
   #locate-btn.active { border-color:var(--cyan); color:var(--cyan); background:rgba(34,211,238,.1); }
 
-  /* ── FILTERS ───────────────────────────────────────────────────── */
-  #filters { position:fixed; top:68px; right:12px; z-index:1000; display:flex; flex-direction:column; gap:5px; }
-  .fb {
-    font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.06em; text-transform:uppercase;
-    padding:6px 12px; border-radius:5px; cursor:pointer;
-    background:var(--panel); border:1px solid var(--bdr); color:var(--mut);
-    transition:all .15s; backdrop-filter:blur(8px);
+  /* ── VIEW MODE SWITCHER ────────────────────────────────────────── */
+  #view-switcher {
+    position:fixed; top:68px; right:12px; z-index:1000;
+    display:flex; flex-direction:column; gap:4px;
   }
-  .fb.on { border-color:transparent; }
-  .fb[data-t="all"].on      { background:var(--cyan); color:#000; }
-  .fb[data-t="facility"].on { background:var(--red);  color:#fff; }
-  .fb[data-t="activity"].on { background:var(--yel);  color:#000; }
-  .fb[data-t="protest"].on  { background:var(--org);  color:#fff; }
-  .fb[data-t="checkpoint"].on { background:var(--pur); color:#fff; }
+  #view-switcher label {
+    font-family:'Space Mono',monospace; font-size:8px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--mut); text-align:right; margin-bottom:2px;
+  }
+  .vb {
+    font-family:'Space Mono',monospace; font-size:9px; letter-spacing:.06em; text-transform:uppercase;
+    padding:6px 10px; border-radius:5px; cursor:pointer;
+    background:var(--panel); border:1px solid var(--bdr); color:var(--mut);
+    transition:all .15s; backdrop-filter:blur(8px); text-align:center;
+  }
+  .vb.on { background:rgba(34,211,238,.15); border-color:var(--cyan); color:var(--cyan); }
 
   /* ── LEGEND ────────────────────────────────────────────────────── */
   #legend {
@@ -181,16 +205,18 @@
   .li { display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:5px; }
   .li:last-child { margin-bottom:0; }
   .ld { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .li-sym { width:16px; height:16px; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
 
   /* ── INFO CARD ─────────────────────────────────────────────────── */
   #card {
-    position:fixed; bottom:24px; right:12px; z-index:1000; width:280px; display:none;
+    position:fixed; bottom:130px; right:12px; z-index:1000; width:280px; display:none;
     background:var(--panel); border:1px solid var(--bdr); border-radius:10px; padding:16px 18px;
     backdrop-filter:blur(8px);
   }
   #cx { position:absolute; top:10px; right:12px; background:none; border:none; color:var(--mut); font-size:17px; cursor:pointer; line-height:1; }
   #cx:hover { color:var(--txt); }
-  #ct { font-family:'Space Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase; margin-bottom:4px; }
+  #ct { font-family:'Space Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase; margin-bottom:2px; display:flex; align-items:center; gap:6px; }
+  #cid { font-family:'Space Mono',monospace; font-size:9px; opacity:.5; }
   #cn { font-size:15px; font-weight:600; line-height:1.3; margin-bottom:3px; }
   #cl { font-size:11px; color:var(--mut); margin-bottom:10px; }
   #cd { font-size:12px; color:#94a3b8; line-height:1.5; margin-bottom:10px; }
@@ -200,6 +226,13 @@
   .s-reported   { background:rgba(250,204,21,.15);   color:var(--yel); }
   .s-unverified { background:rgba(245,158,11,.15);   color:#f59e0b; }
   .s-closed     { background:rgba(100,116,139,.15);  color:var(--mut); }
+
+  /* ── COMPASS ───────────────────────────────────────────────────── */
+  #compass-wrap {
+    position:fixed; bottom:20px; right:12px; z-index:1000;
+    width:100px; height:100px; pointer-events:none; user-select:none;
+  }
+  #compass-wrap img { width:100%; height:100%; }
 
   /* ── TOAST ─────────────────────────────────────────────────────── */
   #toast {
@@ -223,6 +256,13 @@
     animation:loc-ring 1.5s ease-out infinite;
   }
   @keyframes loc-ring { 0%{transform:scale(1);opacity:1} 100%{transform:scale(3);opacity:0} }
+
+  /* identity symbol markers */
+  .sym-marker {
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; line-height:1;
+    filter: drop-shadow(0 0 4px rgba(0,0,0,.8));
+  }
 </style>
 </head>
 <body>
@@ -234,7 +274,6 @@
     <div class="radar-ring2"></div>
     <div class="radar-sweep"></div>
     <div class="radar-center"></div>
-    <!-- scattered blips at fixed positions -->
     <div class="radar-blip" style="top:22%;left:60%;animation-delay:.3s"></div>
     <div class="radar-blip" style="top:55%;left:25%;animation-delay:.9s"></div>
     <div class="radar-blip" style="top:68%;left:58%;animation-delay:1.5s"></div>
@@ -250,11 +289,27 @@
 
 <!-- SEARCH BAR -->
 <div id="searchbar">
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-  </svg>
-  <input id="search-input" type="text" placeholder="Search locations, cities, states…" autocomplete="off"/>
-  <button id="search-clear">×</button>
+  <div id="searchbar-top">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <input id="search-input" type="text" placeholder="Search by name, city, state, ID…" autocomplete="off"/>
+    <button id="search-clear">×</button>
+  </div>
+  <!-- Category filter row -->
+  <div id="search-filters">
+    <button class="sf-btn on" data-f="all">All</button>
+    <button class="sf-btn" data-f="ice">ICE</button>
+    <button class="sf-btn" data-f="police">Police</button>
+    <button class="sf-btn" data-f="military">Military</button>
+  </div>
+  <!-- State filter row -->
+  <div id="state-filter-wrap">
+    <label>State:</label>
+    <select id="state-select">
+      <option value="">All States</option>
+    </select>
+  </div>
 </div>
 <div id="search-results"></div>
 
@@ -267,62 +322,61 @@
   </svg>
 </button>
 
-<!-- FILTERS -->
-<div id="filters">
-  <button class="fb on" data-t="all">All</button>
-  <button class="fb" data-t="facility">Facility</button>
-  <button class="fb" data-t="activity">Activity</button>
-  <button class="fb" data-t="protest">Protest</button>
-  <button class="fb" data-t="checkpoint">Checkpoint</button>
+<!-- VIEW MODE SWITCHER (top-right, below locate) -->
+<div id="view-switcher">
+  <label>View Mode</label>
+  <button class="vb on" data-v="dot">● Dots</button>
+  <button class="vb" data-v="heat">▓ Heatmap</button>
+  <button class="vb" data-v="identity">⬟ Identity</button>
 </div>
 
 <!-- LEGEND -->
 <div id="legend">
   <h5>Legend</h5>
-  <div class="li"><div class="ld" style="background:#ef4444"></div>Detention Facility</div>
-  <div class="li"><div class="ld" style="background:#facc15"></div>ICE Activity</div>
-  <div class="li"><div class="ld" style="background:#f97316"></div>Protest / Action</div>
-  <div class="li"><div class="ld" style="background:#a78bfa"></div>Checkpoint</div>
+  <div class="li"><div class="ld" style="background:#ef4444"></div>ICE Facility (0, 1, 2…)</div>
+  <div class="li"><div class="ld" style="background:#3b82f6"></div>Police Station (p0, p1…)</div>
+  <div class="li"><div class="ld" style="background:#22c55e"></div>Military Base (m0, m1…)</div>
 </div>
 
 <!-- INFO CARD -->
 <div id="card">
   <button id="cx">×</button>
-  <div id="ct"></div>
+  <div id="ct"><span id="ct-label"></span><span id="cid"></span></div>
   <div id="cn"></div>
   <div id="cl"></div>
   <div id="cd"></div>
   <div id="cf"><span id="cu"></span><span class="bdg" id="cb"></span></div>
 </div>
 
-<div id="toast"></div>
+<!-- COMPASS (bottom-right, below card) -->
+<div id="compass-wrap">
+  <img src="compass.png" alt="compass"/>
+</div>
 
-  <img src="compass.png" style="
-position: fixed;
-bottom: 20px;
-right: 20px;
-width: 80px;
-height: 80px;
-z-index: 999999;
-pointer-events: none;
-user-select: none;
--webkit-user-select: none;
--moz-user-select: none;
--ms-user-select: none;
-opacity: 1;
-">
+<div id="toast"></div>
 
 <script>
 const SHEET   = "https://script.google.com/macros/s/AKfycbz--co93mNisSJAV0OyPt0hpkAMxtyrJ1-atwzNXaWCknufKhUdRyuX1dR3w7KoowaY/exec";
 const REFRESH = 90000;
-const HEATMAP_ZOOM_THRESHOLD = 7; // below this zoom → heatmap, above → dots
+const HEATMAP_ZOOM_THRESHOLD = 7;
 
+// Colors per type
 const COLORS = {
-  facility:"#ef4444", activity:"#facc15",
-  protest:"#f97316", checkpoint:"#a78bfa", default:"#22d3ee"
+  ice:      "#ef4444",
+  police:   "#3b82f6",
+  military: "#22c55e",
+  default:  "#22d3ee"
 };
 
-// ── MAP — infinite x axis (worldCopyJump on, noWrap off) ──────────────────────
+// Default symbols (user can customise by setting window.SYMBOLS before load)
+const SYMBOLS = window.SYMBOLS || {
+  ice:      "🔴",
+  police:   "🚔",
+  military: "⭐",
+  default:  "📍"
+};
+
+// ── MAP ───────────────────────────────────────────────────────────────────────
 const map = L.map("map", {
   zoomControl:        true,
   attributionControl: false,
@@ -340,7 +394,9 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
 let rows      = [];
 let markers   = [];
 let heatLayer = null;
-let active    = "all";
+let catFilter = "all";    // all / ice / police / military
+let stateFilter = "";     // "" = all states
+let viewMode  = "dot";    // dot / heat / identity
 let locMarker = null;
 let locCircle = null;
 
@@ -374,76 +430,130 @@ window._cb = function(data) {
   clearTimeout(_jpTimer);
   dismissRadar();
   if (!Array.isArray(data) || data.length === 0) {
-    toast("Sheet returned no rows — check sheet name is THAW");
+    toast("Sheet returned no rows");
     return;
   }
   rows = data.filter(r => r.lat && r.lng && !isNaN(+r.lat) && !isNaN(+r.lng));
+  populateStates();
   draw();
 };
 
-// ── DRAW: heatmap at low zoom, dots at high zoom ──────────────────────────────
-function draw() {
-  const zoom = map.getZoom();
-  const set  = active === "all" ? rows : rows.filter(r => (r.type||"").toLowerCase() === active);
+// ── RESOLVE TYPE from id ──────────────────────────────────────────────────────
+// id: "0","1","2" → ice | "p0","p1" → police | "m0","m1" → military
+// also accepts explicit r.type field as fallback
+function resolveType(r) {
+  const id = String(r.id || "").toLowerCase().trim();
+  if (id.startsWith("m")) return "military";
+  if (id.startsWith("p")) return "police";
+  if (/^\d+$/.test(id)) return "ice";
+  // fallback: use r.type field
+  const t = (r.type||"").toLowerCase();
+  if (t === "military" || t === "police" || t === "ice") return t;
+  return "ice"; // default
+}
 
-  // clear markers
+// ── POPULATE STATE DROPDOWN ───────────────────────────────────────────────────
+function populateStates() {
+  const states = [...new Set(rows.map(r => r.state).filter(Boolean))].sort();
+  const sel = document.getElementById("state-select");
+  sel.innerHTML = '<option value="">All States</option>' +
+    states.map(s => `<option value="${s}">${s}</option>`).join("");
+}
+
+// ── FILTERED ROWS ─────────────────────────────────────────────────────────────
+function getFiltered() {
+  return rows.filter(r => {
+    const t = resolveType(r);
+    if (catFilter !== "all" && t !== catFilter) return false;
+    if (stateFilter && (r.state||"") !== stateFilter) return false;
+    return true;
+  });
+}
+
+// ── DRAW ──────────────────────────────────────────────────────────────────────
+function draw() {
+  const set = getFiltered();
+
   markers.forEach(m => map.removeLayer(m));
   markers = [];
-
-  // clear heatmap
   if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
 
-  if (zoom < HEATMAP_ZOOM_THRESHOLD) {
-    // HEATMAP MODE
+  const zoom = map.getZoom();
+  const useHeat = viewMode === "heat" || (viewMode === "dot" && zoom < HEATMAP_ZOOM_THRESHOLD);
+
+  if (useHeat && viewMode !== "identity") {
     const pts = set.map(r => [+r.lat, +r.lng, 1]);
     heatLayer = L.heatLayer(pts, {
-      radius:    28,
-      blur:      18,
-      maxZoom:   HEATMAP_ZOOM_THRESHOLD,
-      gradient: { 0.2:"#a78bfa", 0.4:"#22d3ee", 0.65:"#facc15", 0.85:"#f97316", 1.0:"#ef4444" }
+      radius: 28, blur: 18, maxZoom: HEATMAP_ZOOM_THRESHOLD,
+      gradient: { 0.2:"#3b82f6", 0.4:"#22d3ee", 0.65:"#facc15", 0.85:"#f97316", 1.0:"#ef4444" }
     }).addTo(map);
-  } else {
-    // DOT MODE
-    set.forEach(r => {
-      const c = COLORS[(r.type||"").toLowerCase()] || COLORS.default;
-      const icon = L.divIcon({
+    return;
+  }
+
+  set.forEach(r => {
+    const t = resolveType(r);
+    const c = COLORS[t] || COLORS.default;
+    let icon;
+
+    if (viewMode === "identity") {
+      const sym = SYMBOLS[t] || SYMBOLS.default;
+      icon = L.divIcon({
+        className: "",
+        html: `<div class="sym-marker" title="${r.name||""}">${sym}</div>`,
+        iconSize:[24,24], iconAnchor:[12,12]
+      });
+    } else {
+      icon = L.divIcon({
         className: "",
         html: `<div style="width:13px;height:13px;border-radius:50%;background:${c};border:2px solid rgba(255,255,255,.2);box-shadow:0 0 7px ${c}99;"></div>`,
         iconSize:[13,13], iconAnchor:[6,6]
       });
-      const m = L.marker([+r.lat,+r.lng],{icon}).addTo(map);
-      m.on("click", () => showCard(r));
-      markers.push(m);
-    });
-  }
+    }
+
+    const m = L.marker([+r.lat,+r.lng],{icon}).addTo(map);
+    m.on("click", () => showCard(r));
+    markers.push(m);
+  });
 }
 
 map.on("zoomend", draw);
+
+// ── VIEW MODE ─────────────────────────────────────────────────────────────────
+document.querySelectorAll(".vb").forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll(".vb").forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+    viewMode = b.dataset.v;
+    draw();
+  };
+});
 
 // ── SEARCH ────────────────────────────────────────────────────────────────────
 const searchInput   = document.getElementById("search-input");
 const searchResults = document.getElementById("search-results");
 const searchClear   = document.getElementById("search-clear");
 
-searchInput.addEventListener("input", () => {
+function runSearch() {
   const q = searchInput.value.trim().toLowerCase();
   searchClear.style.display = q ? "block" : "none";
   if (!q || rows.length === 0) { searchResults.style.display = "none"; return; }
 
-  const hits = rows.filter(r =>
+  const pool = getFiltered();
+  const hits = pool.filter(r =>
     (r.name||"").toLowerCase().includes(q) ||
     (r.city||"").toLowerCase().includes(q) ||
     (r.state||"").toLowerCase().includes(q) ||
-    (r.type||"").toLowerCase().includes(q)
+    String(r.id||"").toLowerCase().includes(q)
   ).slice(0, 10);
 
   if (!hits.length) { searchResults.style.display = "none"; return; }
 
   searchResults.innerHTML = hits.map(r => {
-    const c = COLORS[(r.type||"").toLowerCase()] || COLORS.default;
+    const t = resolveType(r);
+    const c = COLORS[t] || COLORS.default;
     const loc = [r.city,r.state].filter(Boolean).join(", ");
     return `<div class="sr-item" data-lat="${r.lat}" data-lng="${r.lng}" data-idx="${rows.indexOf(r)}">
-      <span class="sr-type" style="color:${c}">${r.type||""}</span>
+      <span class="sr-id" style="color:${c}">#${r.id||"?"}</span>
       <b>${r.name||"Unknown"}</b><span>${loc}</span>
     </div>`;
   }).join("");
@@ -451,16 +561,19 @@ searchInput.addEventListener("input", () => {
   searchResults.querySelectorAll(".sr-item").forEach(el => {
     el.addEventListener("click", () => {
       const lat = +el.dataset.lat, lng = +el.dataset.lng;
-      map.flyTo([lat,lng], 12, {duration:1.2});
+      map.flyTo([lat,lng], 13, {duration:1.2});
       const r = rows[+el.dataset.idx];
       setTimeout(() => showCard(r), 800);
       searchResults.style.display = "none";
       searchInput.value = r.name || "";
+      searchClear.style.display = "block";
     });
   });
 
   searchResults.style.display = "block";
-});
+}
+
+searchInput.addEventListener("input", runSearch);
 
 searchClear.addEventListener("click", () => {
   searchInput.value = "";
@@ -476,52 +589,86 @@ document.addEventListener("click", e => {
   }
 });
 
-// ── LOCATE ────────────────────────────────────────────────────────────────────
+// ── CATEGORY FILTER BUTTONS ───────────────────────────────────────────────────
+document.querySelectorAll(".sf-btn").forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll(".sf-btn").forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+    catFilter = b.dataset.f;
+    draw();
+    runSearch();
+  };
+});
+
+// ── STATE FILTER ──────────────────────────────────────────────────────────────
+document.getElementById("state-select").addEventListener("change", e => {
+  stateFilter = e.target.value;
+  draw();
+  runSearch();
+});
+
+// ── LOCATE (with extended timeout + retry) ────────────────────────────────────
 document.getElementById("locate-btn").addEventListener("click", () => {
   if (!navigator.geolocation) { toast("Geolocation not supported by your browser"); return; }
 
   const btn = document.getElementById("locate-btn");
   btn.classList.add("active");
+  toast("Requesting location…");
 
-  navigator.geolocation.getCurrentPosition(pos => {
-    const lat = pos.coords.latitude;
-    const lng = pos.coords.longitude;
-    const acc = pos.coords.accuracy;
+  // Try high-accuracy first, fall back to low-accuracy on timeout
+  function tryGeo(highAccuracy) {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const acc = pos.coords.accuracy;
 
-    if (locMarker) { map.removeLayer(locMarker); map.removeLayer(locCircle); }
+        if (locMarker) { map.removeLayer(locMarker); map.removeLayer(locCircle); }
 
-    // accuracy ring
-    locCircle = L.circle([lat,lng], {
-      radius: acc, color:"#22d3ee", fillColor:"#22d3ee",
-      fillOpacity:.08, weight:1, opacity:.4
-    }).addTo(map);
+        locCircle = L.circle([lat,lng], {
+          radius: acc, color:"#22d3ee", fillColor:"#22d3ee",
+          fillOpacity:.08, weight:1, opacity:.4
+        }).addTo(map);
 
-    // pulsing dot
-    const locIcon = L.divIcon({
-      className:"",
-      html:`<div style="position:relative;width:16px;height:16px;">
-        <div class="loc-pulse" style="position:absolute;inset:0;border-radius:50%;"></div>
-        <div style="position:absolute;inset:3px;border-radius:50%;background:#22d3ee;box-shadow:0 0 8px #22d3ee;"></div>
-      </div>`,
-      iconSize:[16,16], iconAnchor:[8,8]
-    });
-    locMarker = L.marker([lat,lng],{icon:locIcon,zIndexOffset:500}).addTo(map);
+        const locIcon = L.divIcon({
+          className:"",
+          html:`<div style="position:relative;width:16px;height:16px;">
+            <div class="loc-pulse" style="position:absolute;inset:0;border-radius:50%;"></div>
+            <div style="position:absolute;inset:3px;border-radius:50%;background:#22d3ee;box-shadow:0 0 8px #22d3ee;"></div>
+          </div>`,
+          iconSize:[16,16], iconAnchor:[8,8]
+        });
+        locMarker = L.marker([lat,lng],{icon:locIcon,zIndexOffset:500}).addTo(map);
+        map.flyTo([lat,lng], 12, {duration:1.5});
+        btn.classList.remove("active");
+        toast("Location found (±" + Math.round(acc) + "m)");
+      },
+      err => {
+        if (err.code === 3 && highAccuracy) {
+          // timed out on high accuracy — retry with low accuracy
+          toast("Retrying with lower accuracy…");
+          tryGeo(false);
+        } else {
+          btn.classList.remove("active");
+          const msgs = {1:"Location access denied",2:"Position unavailable",3:"Request timed out"};
+          toast("Location error: " + (msgs[err.code] || err.message));
+        }
+      },
+      { enableHighAccuracy: highAccuracy, timeout: highAccuracy ? 10000 : 20000, maximumAge: 30000 }
+    );
+  }
 
-    map.flyTo([lat,lng], 12, {duration:1.5});
-    btn.classList.remove("active");
-
-  }, err => {
-    btn.classList.remove("active");
-    const msgs = {1:"Location access denied","2":"Position unavailable","3":"Request timed out"};
-    toast("Location error: " + (msgs[err.code] || err.message));
-  }, { enableHighAccuracy:true, timeout:10000 });
+  tryGeo(true);
 });
 
 // ── INFO CARD ─────────────────────────────────────────────────────────────────
 function showCard(r) {
-  const c = COLORS[(r.type||"").toLowerCase()] || COLORS.default;
-  document.getElementById("ct").textContent = (r.type||"").toUpperCase();
-  document.getElementById("ct").style.color = c;
+  const t = resolveType(r);
+  const c = COLORS[t] || COLORS.default;
+  const label = t.toUpperCase();
+  document.getElementById("ct-label").textContent = label;
+  document.getElementById("ct-label").style.color = c;
+  document.getElementById("cid").textContent = r.id ? "#" + r.id : "";
   document.getElementById("cn").textContent = r.name || "Unknown";
   document.getElementById("cl").textContent = [r.city,r.state].filter(Boolean).join(", ");
   document.getElementById("cd").textContent = r.description || "No description.";
@@ -533,21 +680,12 @@ function showCard(r) {
 }
 document.getElementById("cx").onclick = () => document.getElementById("card").style.display = "none";
 
-// ── FILTERS ───────────────────────────────────────────────────────────────────
-document.querySelectorAll(".fb").forEach(b => {
-  b.onclick = () => {
-    document.querySelectorAll(".fb").forEach(x => x.classList.remove("on"));
-    b.classList.add("on");
-    active = b.dataset.t;
-    draw();
-  };
-});
-
 // ── TOAST ─────────────────────────────────────────────────────────────────────
 function toast(msg) {
   const el = document.getElementById("toast");
   el.textContent = msg; el.style.display = "block";
-  setTimeout(() => el.style.display = "none", 6000);
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.style.display = "none", 5000);
 }
 
 // ── START ─────────────────────────────────────────────────────────────────────

@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>USA Forces Map</title>
+<title>THAWDABASE | MAP</title>
+<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/thawdabase/projectwyvern/main/system/shared/favicon.png">
 <link rel="icon" type="image/png" href="system/favicons/current.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -130,6 +131,7 @@
   .sf-btn[data-f="police"].on     { background:var(--blu); }
   .sf-btn[data-f="military"].on   { background:#4ade80; }
   .sf-btn[data-f="datacenter"].on { background:var(--pur); }
+  .sf-btn[data-f="capitol"].on    { background:#f59e0b; }
 
   /* state filter */
   #state-filter-wrap {
@@ -210,7 +212,7 @@
 
   /* ── INFO CARD ─────────────────────────────────────────────────── */
   #card {
-    position:fixed; top:18px; right:56px; z-index:1000; width:280px; display:none;
+    position:fixed; bottom:24px; right:12px; z-index:1000; width:280px; display:none;
     background:var(--panel); border:1px solid var(--bdr); border-radius:10px; padding:16px 18px;
     backdrop-filter:blur(8px); max-height:calc(100vh - 200px); overflow-y:auto;
   }
@@ -228,21 +230,14 @@
   .s-unverified { background:rgba(245,158,11,.15);   color:#f59e0b; }
   .s-closed     { background:rgba(100,116,139,.15);  color:var(--mut); }
 
-  /* ── COMPASS ───────────────────────────────────────────────────── */
-  #compass-wrap {
-    position:fixed; bottom:20px; left:168px; z-index:999;
-    width:90px; height:90px;
+  /* ── COORD DISPLAY (top-left, no background) ───────────────────── */
+  #coords {
+    position:fixed; top:18px; left:12px; z-index:1000;
+    font-family:'Space Mono',monospace; font-size:10px; letter-spacing:.06em;
+    color:rgba(255,255,255,0.45); line-height:1.7;
     pointer-events:none; user-select:none;
-    opacity:1; transition:opacity .3s ease;
+    text-shadow:0 1px 3px rgba(0,0,0,.8);
   }
-  #compass-wrap:hover { opacity:0.15; }
-  /* re-enable hover detection via a transparent overlay so pointer-events still hits it */
-  #compass-hover-trap {
-    position:fixed; bottom:20px; left:168px; z-index:1001;
-    width:90px; height:90px; cursor:default;
-    background:transparent;
-  }
-  #compass-wrap img { width:100%; height:100%; }
 
   /* ── TOAST ─────────────────────────────────────────────────────── */
   #toast {
@@ -313,6 +308,7 @@
     <button class="sf-btn" data-f="police">Police</button>
     <button class="sf-btn" data-f="military">Military</button>
     <button class="sf-btn" data-f="datacenter">Data</button>
+    <button class="sf-btn" data-f="capitol">Capitol</button>
   </div>
   <!-- State filter row -->
   <div id="state-filter-wrap">
@@ -341,6 +337,12 @@
   <button class="vb" data-v="identity">⬟ Identity</button>
 </div>
 
+<!-- COORD DISPLAY top-left -->
+<div id="coords">
+  <div id="coord-lat"></div>
+  <div id="coord-lng"></div>
+</div>
+
 <!-- LEGEND -->
 <div id="legend">
   <h5>Legend</h5>
@@ -348,10 +350,7 @@
   <div class="li"><div class="ld" style="background:#3b82f6"></div>Police Station (p0, p1…)</div>
   <div class="li"><div class="ld" style="background:#4ade80"></div>Military Base (m0, m1…)</div>
   <div class="li"><div class="ld" style="background:#a78bfa"></div>Data Center (d0, d1…)</div>
-  <div id="coord-display" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bdr);font-family:'Space Mono',monospace;font-size:9px;color:var(--mut);letter-spacing:.04em;line-height:1.7;display:none;">
-    <div id="coord-lat">LAT —</div>
-    <div id="coord-lng">LNG —</div>
-  </div>
+  <div class="li"><div class="ld" style="background:#f59e0b"></div>State Capitol (k0, k1…)</div>
 </div>
 
 <!-- INFO CARD -->
@@ -363,12 +362,6 @@
   <div id="cd"></div>
   <div id="cf"><span id="cu"></span><span class="bdg" id="cb"></span></div>
 </div>
-
-<!-- COMPASS (bottom-left, beside legend) -->
-<div id="compass-wrap">
-  <img src="compass.png" alt="compass"/>
-</div>
-<div id="compass-hover-trap"></div>
 
 <div id="toast"></div>
 
@@ -383,6 +376,7 @@ const COLORS = {
   police:     "#3b82f6",
   military:   "#4ade80",
   datacenter: "#a78bfa",
+  capitol:    "#f59e0b",
   default:    "#22d3ee"
 };
 
@@ -391,6 +385,7 @@ const SYMBOLS = window.SYMBOLS || {
   police:     "🚔",
   military:   "⭐",
   datacenter: "🖥️",
+  capitol:    "🏛️",
   default:    "📍"
 };
 
@@ -412,7 +407,7 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
 let rows      = [];
 let markers   = [];
 let heatLayer = null;
-let catFilter = "all";    // all / ice / police / military / datacenter
+let catFilter = "all";    // all / ice / police / military / datacenter / capitol
 let stateFilter = "";     // "" = all states
 let viewMode  = "dot";    // dot / heat / identity
 let locMarker = null;
@@ -464,10 +459,11 @@ function resolveType(r) {
   if (id.startsWith("m")) return "military";
   if (id.startsWith("p")) return "police";
   if (id.startsWith("d")) return "datacenter";
+  if (id.startsWith("k")) return "capitol";
   if (/^\d+$/.test(id)) return "ice";
   // fallback: use r.type field
   const t = (r.type||"").toLowerCase();
-  if (["military","police","ice","datacenter"].includes(t)) return t;
+  if (["military","police","ice","datacenter","capitol"].includes(t)) return t;
   return "ice"; // default
 }
 
@@ -500,10 +496,9 @@ function draw() {
   const zoom = map.getZoom();
 
   // Heatmap mode: always heatmap
-  // Dot mode: heatmap when zoomed out (< threshold), dots when zoomed in
-  // Identity mode: always symbols, never heatmap
-  const showHeat = viewMode === "heat" ||
-                   (viewMode === "dot" && zoom < HEATMAP_ZOOM_THRESHOLD);
+  // Dot mode: always colored dots, no heatmap at any zoom
+  // Identity mode: always symbols
+  const showHeat = viewMode === "heat";
 
   if (showHeat) {
     const pts = set.map(r => [+r.lat, +r.lng, 1]);
@@ -712,24 +707,17 @@ function toast(msg) {
   el._t = setTimeout(() => el.style.display = "none", 5000);
 }
 
-// ── COMPASS HOVER TRAP (fades compass image on hover, no map interference) ────
-const compassWrap = document.getElementById("compass-wrap");
-const compassTrap = document.getElementById("compass-hover-trap");
-compassTrap.addEventListener("mouseenter", () => compassWrap.style.opacity = "0.15");
-compassTrap.addEventListener("mouseleave", () => compassWrap.style.opacity = "1");
-
-// ── LAT/LNG DISPLAY in legend ────────────────────────────────────────────────
-const coordDisplay = document.getElementById("coord-display");
-const coordLat     = document.getElementById("coord-lat");
-const coordLng     = document.getElementById("coord-lng");
+// ── LAT/LNG DISPLAY (top-left, bare text) ────────────────────────────────────
+const coordLat = document.getElementById("coord-lat");
+const coordLng = document.getElementById("coord-lng");
 
 map.on("mousemove", e => {
-  coordDisplay.style.display = "block";
-  coordLat.textContent = "LAT " + e.latlng.lat.toFixed(5);
-  coordLng.textContent = "LNG " + e.latlng.lng.toFixed(5);
+  coordLat.textContent = e.latlng.lat.toFixed(5) + "°N";
+  coordLng.textContent = e.latlng.lng.toFixed(5) + "°W";
 });
 map.on("mouseout", () => {
-  coordDisplay.style.display = "none";
+  coordLat.textContent = "";
+  coordLng.textContent = "";
 });
 
 // ── START ─────────────────────────────────────────────────────────────────────
